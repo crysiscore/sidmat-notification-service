@@ -3,11 +3,11 @@ library(blastula)
 
 
 
-send_by_microsoft_365r <- function(outlook , recipient, attachment){ 
+microsoft_365r_notify_new_material <- function(outlook , recipient, attachment){ 
   bl_body <- "## Prezado(a) 
 
   Recebeu este email porque tem material disponivel para sua área  no armazém
-  Para o efeito visite o endereco http://localhost:3001 e efecture uma requisição.
+  Para o efeito visite o endereco https://ccs-sidmat.vercel.app/auth/login  e efecture uma requisição.
 
   Cpts,
 
@@ -26,6 +26,31 @@ send_by_microsoft_365r <- function(outlook , recipient, attachment){
   
   
 }
+
+microsoft_365r_notify_guia_confirmation <- function(outlook , recipient, attachment, vec_guias="" ){ 
+  bl_body <- paste0("## Prezado(a) 
+
+  Recebeu este email porque tem requisições com confirmação de entrega. Veja as Guias: ", vec_guias ,"
+  no endereco https://ccs-sidmat.vercel.app/auth/login .
+
+  Cpts,
+
+  CCS Logistica")
+  
+  
+  bl_em <- compose_email(
+    body=md(bl_body),
+    footer=md("sent via Microsoft365R")
+  )
+  em <- outlook$create_email(bl_em, subject="Confirmação de Entrega de Material", to=recipient)
+  
+  # add an attachment and send it
+  em$add_attachment(attachment)
+  em$send()
+  
+  
+}
+
 
 # Define a function to write logs to a text file
 write_log <- function(log_message, log_file = "log.txt") {
@@ -54,4 +79,34 @@ removeOlderXlsxFiles <- function(folder_path){
   
   
   
+}
+
+
+
+array_to_str <- function(vec){
+  
+  if(length(vec)==1){
+    return(paste0("[", vec , "]"))
+  } else if (length(vec)>1){
+    
+    str_tmp <- ''
+    for (i in 1:length(vec)) {
+      if(i==1){
+        
+        str_tmp <- paste0( "[", vec[i])
+        
+      } else if(i==length(vec) ){
+        
+        str_tmp <- paste0( str_tmp,","  ,vec[i],  "]" )
+        
+      } else {
+        
+        str_tmp <- paste0( str_tmp,",", vec[i] )
+        
+      }
+      
+    }
+    return(str_tmp)
+    
+  }
 }

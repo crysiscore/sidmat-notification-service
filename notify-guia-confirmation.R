@@ -15,9 +15,10 @@ db_name <- Sys.getenv("POSTGRES_DB_NAME")
 db_user <-Sys.getenv("POSTGRES_USER")
 db_password <- Sys.getenv("POSTGRES_PASSWORD")
 
-#directory to store new material disponivel file and logs for each area programatica
+#directory to store new guia_saida  file and logs for each area programatica
 xls_file_dir <- "~/Documents/tmp" 
-log_file_sidmat <- paste0(xls_file_dir,"/", "sidmat_logs.txt")
+#xls_file_dir <- "/home/ccsadmin/Projects/"
+log_file_sidmat <- paste0(xls_file_dir,"/", "sidmat_guia_confirmation_logs.txt")
 
 #Not run
 # Create auth token cache directory, otherwise it will prompt the the console for input
@@ -43,8 +44,10 @@ con <- NULL
 tryCatch({
   
   # Create a connection to the PostgreSQL database
-  log_msg_db_con <- paste0(Sys.time(), "  [sidmat] - Conecting to postgresql server...")
-  write_log(log_message = log_msg_db_con,log_file = log_file_sidmat)
+  write_log(log_message = "########################################################################################################################", log_file = log_file_sidmat)
+  log_msg_db_con         <-  paste0(Sys.time(), "  [sidmat] - Conecting to postgresql server...")
+  write_log(log_message  <-  log_msg_db_con,log_file = log_file_sidmat)
+  
   con <- dbConnect(
     PostgreSQL(),
     host = db_host,
@@ -61,21 +64,23 @@ tryCatch({
   write_log(log_message = log_msg_db_query, log_file = log_file_sidmat)
   
   # Specify the table you want to read from
-  table_name <- " api.vw_novo_material"
+  table_name <- "api.vw_confirmacao_guia"
   
   # Read data from the table
-  query_material <- paste("SELECT * FROM ", table_name)
+  query_guia<- paste("SELECT * FROM ", table_name)
   query_colaborador_area <- "select c.nome, c.email, a.id, a.area from api.colaborador c inner join api.colaborador_area ca on c.id = ca.colaborador inner join api.area a on a.id = ca.area;"
-  
-  df_novo_material <- dbGetQuery(con, query_material)
-  df_novo_material  <- filter(df_novo_material, area %in% c("SMI/PTV","VBG","ACT","PCT"))
+  df_guia_confirmada <- dbGetQuery(con, query_guia)
   df_colaborador_area <- dbGetQuery(con,query_colaborador_area )
-  df_colaborador_area$email="agnaldosamuel@ccsaude.org.mz"
-  # NOT RUN
-  # df_novo_material <- df_novo_material %>% filter(area %in% c("APSS","SMI/PTV"))
+
+
+  # NOT RUN (just for tests)
+  # df_guia_confirmada <- df_guia_confirmada %>% filter(area %in% c("APSS","SMI/PTV"))
+  ##df_colaborador_area$email="agnaldosamuel@ccsaude.org.mz"
+  # df_guia_confirmada  <- filter(df_guia_confirmada, area %in% c("M&A"))
+  #df_colaborador_area <- subset(df_colaborador_area, ! nome %in% c("Mauricio Timecane") )
   
-  # only runs it there are new materials (notification_status ='P')
-  if(nrow(df_novo_material) > 0 && nrow(df_colaborador_area) > 0 ){ # Novo material importado
+  # only runs it there are new  confirmed guia delivery (notification_status ='P')
+  if(nrow(df_guia_confirmada) > 0 && nrow(df_colaborador_area) > 0 ){ 
   
     removeOlderXlsxFiles(folder_path = xls_file_dir)
     # create a Microsoft Graph login
@@ -84,15 +89,14 @@ tryCatch({
     write_log(log_message = log_msg_graph_login, log_file = log_file_sidmat)
     
     gr <- create_graph_login(tenant, app, password=pwd, auth_type="client_credentials")
-    # retrieving another user's details
-    user <- gr$get_user(email="nunomoura@ccsaude.org.mz")
-    outlook <- user$get_outlook()
+  
     
-    if(is.environment(gr ) && is.environment(outlook) ){
+    if(is.environment(gr )){
       
 
       # get all areas
-      areas <- unique(df_novo_material$area)
+      areas <- unique(df_guia_confirmada$area)
+      
       
       for (area in areas) {
         write_log(log_message = "-------------------------------------------------------------------------------", log_file = log_file_sidmat)
@@ -101,15 +105,23 @@ tryCatch({
         write_log(log_message = "-------------------------------------------------------------------------------", log_file = log_file_sidmat)
         
         area_name <- area
+
         emails_responsavel_area <- df_colaborador_area[which(df_colaborador_area$area==area_name),c("email")]
         
         # This should not happen
         if(length(emails_responsavel_area)==0){
           log_msg_email_missing <- paste0(Sys.time(), "  [sidmat] - Error e-mail do responsavel da area { ", area," } nao foi encontrado. ")
-          write_log(log_message = log_msg_email_missing, log_file = log_file_sidmat)
+          write_log (log_message = log_msg_email_missing, log_file = log_file_sidmat)
           break
         }
-        temp_df <- df_novo_material %>% filter(area==area_name)
+        temp_df <- df_guia_confirmada %>% filter(area==area_name)
+        
+        # retrieving another user's details
+        tmp_confirmed_name <-  df_guia_confirmada$confirmed_by[1]
+        tmp_confirmed_email <- df_colaborador_area$email[which(df_colaborador_area$nome==tmp_confirmed_name)]
+        user <- gr$get_user(email=tmp_confirmed_email)
+        outlook <- user$get_outlook()
+        
 
         # remove special character from area_name 
         if(grepl(pattern = '/',x = area,ignore.case = TRUE)){
@@ -117,7 +129,7 @@ tryCatch({
           area_name <- gsub(pattern = '/',replacement = '_',ignore.case = TRUE,x = area_name)
         }
         current_date <- Sys.Date()
-        temp_path <- paste0(xls_file_dir,"/material_",area_name,"_",current_date,".xlsx")
+        temp_path <- paste0(xls_file_dir,"/guias_",area_name,"_",current_date,".xlsx")
         assign(paste0("df_",area_name), value = temp_df, envir = .GlobalEnv)
         # write file to disk and use as attachment 
         write_xlsx(
@@ -129,80 +141,90 @@ tryCatch({
       
        # Mais de um responsavel da area
        if(length(emails_responsavel_area) >1) {
+         
          for (email in emails_responsavel_area) {
             print(email)
+           # get the ids of guia_Saida
+           vec_guias_ids <- ""
+           for (i in 1:nrow(temp_df)) {
+             
+             id <- temp_df$id[i]
+             if(i== nrow(temp_df)){
+               vec_guias_ids <- paste0(vec_guias_ids, id)
+             } else {
+               
+               vec_guias_ids <- paste0(vec_guias_ids, id," , ")
+             } 
+             
+             
+           }
            
-           response <- send_by_microsoft_365r(outlook = outlook,recipient = email ,attachment = temp_path)
+           response <- microsoft_365r_notify_guia_confirmation(outlook = outlook,recipient = email ,attachment = temp_path, vec_guias = array_to_str(temp_df$nr_guia))
            received_date <- response$properties$receivedDateTime
            
-           # Message received--> update notification status in material table
+           # Message received--> update notification status in guia_saida table
            if(substr(response$properties$receivedDateTime,1,4)==substr(Sys.Date(),1,4)){
              log_msg_notification<- paste0(Sys.time(), "  [sidmat] - Notificacao enviada para : { ", area," - ",  email, " } ")
              write_log(log_message = log_msg_notification, log_file = log_file_sidmat)
-              # get the ids of material
-             vec_material_ids <- ""
-             for (i in 1:nrow(temp_df)) {
-               
-                id <- temp_df$id[i]
-                if(i== nrow(temp_df)){
-                  vec_material_ids <- paste0(vec_material_ids, id)
-                } else {
-                  
-                  vec_material_ids <- paste0(vec_material_ids, id," , ")
-                } 
-                
-               
-             }
-             sql_udopate_notification <- paste0("update api.material set notification_status = 'S' where id in (", vec_material_ids, ") ;")
+
+             sql_update_notification <- paste0("update api.guia_saida set notification_status = 'S' where id in (", vec_guias_ids, ") ;")
              
-             log_msg_notification_status_update<- paste0(Sys.time(), "  [sidmat] - Materiais actualizados  ids: { ",vec_material_ids, " } ")
+             log_msg_notification_status_update<- paste0(Sys.time(), "  [sidmat] - Materiais actualizados  ids: { ",vec_guias_ids, " } ")
              write_log(log_message = log_msg_notification_status_update, log_file = log_file_sidmat)
              
-             result <- dbSendQuery(con, sql_udopate_notification)
+             result <- dbSendQuery(con, sql_update_notification)
              dbClearResult(result)
              
            }
            
          }
         
-      } else {
+      }
+       else {
+         
+         # get the ids of guia_saidas
+         vec_guias_ids <- ""
+         for (i in 1:nrow(temp_df)) {
+           
+           id <- temp_df$id[i]
+           if(i== nrow(temp_df)){
+             
+             vec_guias_ids <- paste0(vec_guias_ids, id)
+             
+           } else {
+             
+             vec_guias_ids <- paste0(vec_guias_ids, id," , ")
+             
+           } 
+           
+           
+         }
+         
         
-        response <- send_by_microsoft_365r(outlook = outlook,recipient = emails_responsavel_area ,attachment = temp_path)
+        response <- microsoft_365r_notify_guia_confirmation(outlook = outlook,recipient = emails_responsavel_area ,attachment = temp_path, vec_guias =  array_to_str(temp_df$nr_guia))
         received_date <- response$properties$receivedDateTime
         
-        # Message received--> update notification status in material table
+        # Message received--> update notification status in guia_saida table
         if(substr(response$properties$receivedDateTime,1,4)==substr(Sys.Date(),1,4)){
           
           log_msg_notification<- paste0(Sys.time(), "  [sidmat] - Notificacao enviada para : { ", area," - ",  emails_responsavel_area, " } ")
           write_log(log_message = log_msg_notification, log_file = log_file_sidmat)
-          # get the ids of material
-          vec_material_ids <- ""
-          for (i in 1:nrow(temp_df)) {
-            
-            id <- temp_df$id[i]
-            if(i== nrow(temp_df)){
-            
-                vec_material_ids <- paste0(vec_material_ids, id)
-                
-            } else {
-              
-              vec_material_ids <- paste0(vec_material_ids, id," , ")
-              
-            } 
-            
-            
-          }
-          sql_udopate_notification <- paste0("update api.material set notification_status = 'S' where id in (", vec_material_ids, ") ;")
-          result <- dbSendQuery(con, sql_udopate_notification)
-          log_msg_notification_status_update<- paste0(Sys.time(), "  [sidmat] - Materiais actualizados  ids: { ",vec_material_ids, " } ")
+
+          sql_update_notification <- paste0("update api.guia_saida set notification_status = 'S' where id in (", vec_guias_ids, ") ;")
+          result <- dbSendQuery(con, sql_update_notification)
+          log_msg_notification_status_update<- paste0(Sys.time(), "  [sidmat] - Guias de saida actualizados  ids: { ",vec_guias_ids, " } ")
           write_log(log_message = log_msg_notification_status_update, log_file = log_file_sidmat)
           dbClearResult(result)
           
         }
         
       }
-      
-    
+       
+       if (!is.null(con)) {
+          # Close the database connection in the finally block
+          dbDisconnect(con)
+      }
+        write_log(log_message = "########################################################################################################################", log_file = log_file_sidmat)
     
   }
   
