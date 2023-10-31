@@ -4,38 +4,11 @@ library(RPostgreSQL)
 library(dplyr)
 library(writexl)
 
+source('param.R')
+setwd(wd)
 
 # Miscellaneous Functions
 source('miscellaneous.R')
-
-# PostgreSQL connection parameters
-db_host <- Sys.getenv("POSTGRES_HOST")
-db_port <- Sys.getenv("POSTGRES_PORT")
-db_name <- Sys.getenv("POSTGRES_DB_NAME")
-db_user <-Sys.getenv("POSTGRES_USER")
-db_password <- Sys.getenv("POSTGRES_PASSWORD")
-
-#directory to store new material disponivel file and logs for each area programatica
-xls_file_dir <- "~/Documents/tmp" 
-#xls_file_dir <- "/home/ccsadmin/Projects/"
-log_file_sidmat <- paste0(xls_file_dir,"/", "sidmat_new_material_logs.txt")
-
-#Not run
-# Create auth token cache directory, otherwise it will prompt the the console for input
-# create_AzureR_dir()
-#### The AzureR packages save your login sessions so that you don’t need to reauthenticate each time. If you’re experiencing authentication failures, you can try clearing the saved data by running the following code:
-#   
-# AzureAuth::clean_token_directory()
-# AzureGraph::delete_graph_login(tenant="mytenant")
-
-# Microsoft App Registration
-tenant <- "339b661c-15dc-4fdc-9c47-66f74d5eb137"
-# the application/client ID of the app registration you created in AAD
-app <- "be5c0edd-fa3d-4ba8-8bad-9a0a0d367ee9"
-# retrieve the client secret (password) from an environment variable
-pwd <- Sys.getenv("MS365R_CLIENT_SECRET")
-# retrieve the user whose OneDrive we want to access
-user <- Sys.getenv("MS365R_TARGET_USER")
 
 # Initialize a connection object outside the tryCatch block
 con <- NULL
@@ -44,9 +17,9 @@ con <- NULL
 tryCatch({
   
   # Create a connection to the PostgreSQL database
-  write_log(log_message = "########################################################################################################################", log_file = log_file_sidmat)
+  write_log(log_message = "########################################################################################################################", log_file = log_file_material)
   log_msg_db_con         <-  paste0(Sys.time(), "  [sidmat] - Conecting to postgresql server...")
-  write_log(log_message  <-  log_msg_db_con,log_file = log_file_sidmat)
+  write_log(log_message  <-  log_msg_db_con,log_file = log_file_material)
   con <- dbConnect(
     PostgreSQL(),
     host = db_host,
@@ -59,8 +32,8 @@ tryCatch({
   log_msg_con_sucess <- paste0(Sys.time(), "  [sidmat] - acquired connection to postgres server")
   log_msg_db_query <- paste0(Sys.time(), "  [sidmat] - Quering database ...")
   
-  write_log(log_message = log_msg_con_sucess, log_file = log_file_sidmat)
-  write_log(log_message = log_msg_db_query, log_file = log_file_sidmat)
+  write_log(log_message = log_msg_con_sucess, log_file = log_file_material)
+  write_log(log_message = log_msg_db_query, log_file = log_file_material)
   
   # Specify the table you want to read from
   table_name <- "api.vw_novo_material"
@@ -85,7 +58,7 @@ tryCatch({
     # create a Microsoft Graph login
     #TODO Run only once...
     log_msg_graph_login<- paste0(Sys.time(), "  [sidmat] - Create a Microsoft Graph login ...")
-    write_log(log_message = log_msg_graph_login, log_file = log_file_sidmat)
+    write_log(log_message = log_msg_graph_login, log_file = log_file_material)
     
     gr <- create_graph_login(tenant, app, password=pwd, auth_type="client_credentials")
     # retrieving another user's details
@@ -99,10 +72,10 @@ tryCatch({
       areas <- unique(df_novo_material$area)
       
       for (area in areas) {
-        write_log(log_message = "----------------------------------------------------------------------------------------------------------------------- ", log_file = log_file_sidmat)
+        write_log(log_message = "----------------------------------------------------------------------------------------------------------------------- ", log_file = log_file_material)
         log_msg_process_area<- paste0(Sys.time(), "  [sidmat] - Processando dados da area : { ", area," } ")
-        write_log(log_message = log_msg_process_area, log_file = log_file_sidmat)
-        write_log(log_message = "----------------------------------------------------------------------------------------------------------------------- ", log_file = log_file_sidmat)
+        write_log(log_message = log_msg_process_area, log_file = log_file_material)
+        write_log(log_message = "----------------------------------------------------------------------------------------------------------------------- ", log_file = log_file_material)
         
         area_name <- area
         emails_responsavel_area <- df_colaborador_area[which(df_colaborador_area$area==area_name),c("email")]
@@ -110,7 +83,7 @@ tryCatch({
         # This should not happen
         if(length(emails_responsavel_area)==0){
           log_msg_email_missing <- paste0(Sys.time(), "  [sidmat] - Error e-mail do responsavel da area { ", area," } nao foi encontrado. ")
-          write_log(log_message = log_msg_email_missing, log_file = log_file_sidmat)
+          write_log(log_message = log_msg_email_missing, log_file = log_file_material)
           break
         }
         temp_df <- df_novo_material %>% filter(area==area_name)
@@ -142,7 +115,7 @@ tryCatch({
            # Message received--> update notification status in material table
            if(substr(response$properties$receivedDateTime,1,4)==substr(Sys.Date(),1,4)){
              log_msg_notification<- paste0(Sys.time(), "  [sidmat] - Notificacao enviada para : { ", area," - ",  email, " } ")
-             write_log(log_message = log_msg_notification, log_file = log_file_sidmat)
+             write_log(log_message = log_msg_notification, log_file = log_file_material)
               # get the ids of material
              vec_material_ids <- ""
              for (i in 1:nrow(temp_df)) {
@@ -160,7 +133,7 @@ tryCatch({
              sql_udopate_notification <- paste0("update api.material set notification_status = 'S' where id in (", vec_material_ids, ") ;")
              
              log_msg_notification_status_update<- paste0(Sys.time(), "  [sidmat] - Materiais actualizados  ids: { ",vec_material_ids, " } ")
-             write_log(log_message = log_msg_notification_status_update, log_file = log_file_sidmat)
+             write_log(log_message = log_msg_notification_status_update, log_file = log_file_material)
              
              result <- dbSendQuery(con, sql_udopate_notification)
              dbClearResult(result)
@@ -179,7 +152,7 @@ tryCatch({
         if(substr(response$properties$receivedDateTime,1,4)==substr(Sys.Date(),1,4)){
           
           log_msg_notification<- paste0(Sys.time(), "  [sidmat] - Notificacao enviada para : { ", area," - ",  emails_responsavel_area, " } ")
-          write_log(log_message = log_msg_notification, log_file = log_file_sidmat)
+          write_log(log_message = log_msg_notification, log_file = log_file_material)
           # get the ids of material
           vec_material_ids <- ""
           for (i in 1:nrow(temp_df)) {
@@ -200,7 +173,7 @@ tryCatch({
           sql_udopate_notification <- paste0("update api.material set notification_status = 'S' where id in (", vec_material_ids, ") ;")
           result <- dbSendQuery(con, sql_udopate_notification)
           log_msg_notification_status_update<- paste0(Sys.time(), "  [sidmat] - Materiais actualizados  ids: { ",vec_material_ids, " } ")
-          write_log(log_message = log_msg_notification_status_update, log_file = log_file_sidmat)
+          write_log(log_message = log_msg_notification_status_update, log_file = log_file_material)
           dbClearResult(result)
           
         }
@@ -211,7 +184,7 @@ tryCatch({
           # Close the database connection in the finally block
           dbDisconnect(con)
       }
-      write_log(log_message = "########################################################################################################################", log_file = log_file_sidmat)
+      write_log(log_message = "########################################################################################################################", log_file = log_file_material)
     
   }
   
@@ -220,7 +193,7 @@ tryCatch({
       # DO nothing 
       # The script will try again in the next cycle
       log_msg_graph_login<- paste0(Sys.time(), "  [sidmat] - Error : Failed to Create a Microsoft Graph login ...")
-      write_log(log_message = log_msg_graph_login, log_file = log_file_sidmat)
+      write_log(log_message = log_msg_graph_login, log_file = log_file_material)
     }
   }
   
@@ -230,8 +203,8 @@ tryCatch({
   log_msg_error <- paste0(Sys.time(), "  [sidmat] - Unknown error ...")
   log_msg_error_message <- paste0(Sys.time(), "  [sidmat] - Error message: ", e$message)
   
-  write_log(log_message = log_msg_error, log_file = log_file_sidmat)
-  write_log(log_message = log_msg_error_message, log_file = log_file_sidmat)
+  write_log(log_message = log_msg_error, log_file = log_file_material)
+  write_log(log_message = log_msg_error_message, log_file = log_file_material)
   cat(paste("Error message: ", e$message, "\n"))
   
 }, finally = {
