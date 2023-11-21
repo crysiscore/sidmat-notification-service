@@ -6,8 +6,8 @@ library(blastula)
 microsoft_365r_notify_new_material <- function(outlook , recipient, attachment){ 
   bl_body <- "## Prezado(a) 
 
-  Recebeu este email porque tem material disponivel para sua área  no armazém
-  Para o efeito visite o endereco https://ccs-sidmat.vercel.app/auth/login  e efecture uma requisição.
+  Recebeu este email porque tem material disponivel para sua área  no armazém,
+  Para fazer o plano de distribuição visite o endereco https://ccs-sidmat.vercel.app/auth/login.
 
   Cpts,
 

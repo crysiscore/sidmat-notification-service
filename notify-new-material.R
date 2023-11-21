@@ -180,10 +180,11 @@ tryCatch({
         
       }
        
-       if (!is.null(con)) {
+     
           # Close the database connection in the finally block
           dbDisconnect(con)
-      }
+          rm(con)
+      
       write_log(log_message = "########################################################################################################################", log_file = log_file_material)
     
   }
@@ -196,6 +197,11 @@ tryCatch({
       write_log(log_message = log_msg_graph_login, log_file = log_file_material)
     }
   }
+  else {
+    #Close the database connection in the finally block
+    dbDisconnect(con)
+    rm(con)
+    }
   
   
 }, error = function(e) {
@@ -206,12 +212,15 @@ tryCatch({
   write_log(log_message = log_msg_error, log_file = log_file_material)
   write_log(log_message = log_msg_error_message, log_file = log_file_material)
   cat(paste("Error message: ", e$message, "\n"))
-  
+  # Close the database connection in the finally block
+  dbDisconnect(con)
+  rm(con)
 }, finally = {
-  if (!is.null(con)) {
+
     # Close the database connection in the finally block
     dbDisconnect(con)
-  }
+    rm(con)
+
 })
 
 
