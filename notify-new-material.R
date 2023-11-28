@@ -220,7 +220,6 @@ tryCatch({
   
   log_msg_error <- paste0(Sys.time(), "  [sidmat] - Unknown error ...")
   log_msg_error_message <- paste0(Sys.time(), "  [sidmat] - Error message: ", e$message)
-  
   write_log(log_message = log_msg_error, log_file = log_file_material)
   write_log(log_message = log_msg_error_message, log_file = log_file_material)
   cat(paste("Error message: ", e$message, "\n"))
