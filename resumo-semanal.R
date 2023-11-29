@@ -167,6 +167,8 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
         response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient =  "shitalmobaracaly@ccsaude.org.mz",df.resumo = df_resumo,area.name =  array_to_str(areas), period = period)
         #Send Resumo Semanal to nuno and Dra. Shital
         response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient =  "nunomoura@ccsaude.org.mz",df.resumo = df_resumo,area.name =  array_to_str(areas), period = period)
+        #Send Resumo Semanal to Hugo
+        response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient =  "hugoazevedo@ccsaude.org.mz",df.resumo = df_resumo,area.name =  array_to_str(areas), period = period)
         
         
         if (!is.null(con)) {
