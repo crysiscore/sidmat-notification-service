@@ -3,6 +3,8 @@ library(Microsoft365R)
 library(RPostgreSQL)
 library(dplyr)
 library(writexl)
+library(lubridate)
+
 
 source('param.R')
 setwd(wd)
