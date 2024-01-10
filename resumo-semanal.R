@@ -34,17 +34,35 @@ tryCatch({
   )
   
   # Get the current date
- # current_date <- Sys.Date()
-  # Calculate Monday and Friday of the current week
-  current_date = Sys.Date()
+  current_date <- Sys.Date()
+  
+  # Get the first day of the month
+  first_day_of_month <- floor_date(current_date, unit = "month")
+  # Get the last day of the month
+  last_day_of_month <- ceiling_date(current_date, unit = "month") - 1
+  
   monday_of_week <- current_date - (wday(current_date) - 2) %% 7
   friday_of_week <- monday_of_week + 4
   
-  period <- paste0(monday_of_week, " a ", friday_of_week)
+  period_semanal <- paste0(monday_of_week, " a ", friday_of_week)
+  period_mensal <- paste0(first_day_of_month, " a ", last_day_of_month)
   
   
   # Read data from the table
-  query_resumo<- paste("
+  query_resumo_mensal <- paste("
+
+select req.unidade_sanitaria, us.nome, req.data_requisicao, a.area,  gs.nr_guia, gs.data_guia, s.name
+from  api.requisicao req
+inner join api.material mat on mat.id = req.material
+inner join api.area a on a.id = mat.area
+left join api.guia_saida gs on gs.id = req.nr_guia
+left join api.status s on s.id = gs.status
+left join api.unidade_sanitaria us on us.id = req.unidade_sanitaria
+
+where req.canceled = 'No' and req.data_requisicao::date between '" , first_day_of_month, "' and '",  last_day_of_month, "' ;")
+  
+  # Read data from the table
+  query_resumo_semanal <- paste("
 
 select req.unidade_sanitaria, us.nome, req.data_requisicao, a.area,  gs.nr_guia, gs.data_guia, s.name
 from  api.requisicao req
@@ -56,20 +74,30 @@ left join api.unidade_sanitaria us on us.id = req.unidade_sanitaria
 
 where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_week, "' and '",  friday_of_week, "' ;")
   
-  df_requisicoes <- dbGetQuery(con, query_resumo)
+  df_requisicoes_mensal <- dbGetQuery(con, query_resumo_mensal)
+  df_requisicoes_semanal <- dbGetQuery(con, query_resumo_semanal)
   
-  if( nrow(df_requisicoes) > 0 ){
+  if( nrow(df_requisicoes_semanal) > 0 ){
     
     query_colaborador_area <- "select c.nome, c.email, a.id, a.area from api.colaborador c inner join api.colaborador_area ca on c.id = ca.colaborador inner join api.area a on a.id = ca.area;"
     df_colaborador_area <- dbGetQuery(con,query_colaborador_area )
     
-    df_total_requisicoes     <- df_requisicoes %>% group_by(area) %>% summarise(total_requisicoes = n())
-    df_total_pendentes       <- df_requisicoes %>% filter(is.na(nr_guia)) %>% group_by(area) %>% summarise(pendentes = n())
-    df_total_processadas     <- df_requisicoes %>%   filter(!is.na(nr_guia) & name=="NOVA") %>% group_by(area) %>% summarise(processadas = n())
-    df_total_entregues       <- df_requisicoes %>%  filter(!is.na(nr_guia) & name=="ENTREGUE") %>% group_by(area) %>% summarise(entregues = n())
-    df_resumo                <- df_total_requisicoes %>% left_join(df_total_pendentes, by ='area') %>% left_join(df_total_processadas, by ='area')  %>% left_join(df_total_entregues, by ='area')
     
-    df_resumo[is.na(df_resumo)] <- 0
+    df_total_requisicoes_semanal     <- df_requisicoes_semanal %>% group_by(area) %>% summarise(total_requisicoes = n())
+    df_total_pendentes_semanal       <- df_requisicoes_semanal %>% filter(is.na(nr_guia)) %>% group_by(area) %>% summarise(pendentes = n())
+    df_total_processadas_semanal     <- df_requisicoes_semanal %>%   filter(!is.na(nr_guia) & name=="NOVA") %>% group_by(area) %>% summarise(processadas = n())
+    df_total_entregues_semanal       <- df_requisicoes_semanal %>%  filter(!is.na(nr_guia) & name=="ENTREGUE") %>% group_by(area) %>% summarise(entregues = n())
+    df_resumo_semanal                <- df_total_requisicoes_semanal %>% left_join(df_total_pendentes_semanal, by ='area') %>% left_join(df_total_processadas_semanal, by ='area')  %>% left_join(df_total_entregues_semanal, by ='area')
+    
+    df_total_requisicoes_mensal     <- df_requisicoes_mensal %>% group_by(area) %>% summarise(total_requisicoes = n())
+    df_total_pendentes_mensal       <- df_requisicoes_mensal %>% filter(is.na(nr_guia)) %>% group_by(area) %>% summarise(pendentes = n())
+    df_total_processadas_mensal     <- df_requisicoes_mensal %>%   filter(!is.na(nr_guia) & name=="NOVA") %>% group_by(area) %>% summarise(processadas = n())
+    df_total_entregues_mensal       <- df_requisicoes_mensal %>%  filter(!is.na(nr_guia) & name=="ENTREGUE") %>% group_by(area) %>% summarise(entregues = n())
+    df_resumo_mensal                <- df_total_requisicoes_mensal %>% left_join(df_total_pendentes_mensal, by ='area') %>% left_join(df_total_processadas_mensal, by ='area')  %>% left_join(df_total_entregues_mensal, by ='area')
+    
+    
+    df_resumo_semanal[is.na(df_resumo_semanal)] <- 0
+    df_resumo_mensal[is.na(df_resumo_mensal)] <- 0
     
     # Create a Microsoft Graph login
     # TODO Run only once...
@@ -86,7 +114,7 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
         outlook <- user$get_outlook()
         
         # get all areas
-        areas <- unique(df_resumo$area)
+        areas <- unique(df_resumo_semanal$area)
         
         for (area in areas) {
           write_log(log_message = "----------------------------------------------------------------------------------------------------------------------- ", log_file = log_file_resumo)
@@ -104,7 +132,7 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
             write_log(log_message = log_msg_email_missing, log_file = log_file_resumo)
             break
           }
-          temp_df <- df_resumo %>% filter(area==area_name)
+          temp_df <- df_resumo_semanal %>% filter(area==area_name)
           
           # remove special character from area_name 
           if(grepl(pattern = '/',x = area,ignore.case = TRUE)){
@@ -166,11 +194,20 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
         
         #TODO Personalizar envio automatico de emails
         #Send Resumo Semanal to nuno and Dra. Shital
-        response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient =  "shitalmobaracaly@ccsaude.org.mz",df.resumo = df_resumo,area.name =  array_to_str(areas), period = period)
-        #Send Resumo Semanal to nuno and Dra. Shital
-        response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient =  "nunomoura@ccsaude.org.mz",df.resumo = df_resumo,area.name =  array_to_str(areas), period = period)
+        response <- microsoft_365r_notify_resumo_semanal_mensal(outlook = outlook,recipient =  "shitalmobaracaly@ccsaude.org.mz",df.resumo.mensal = df_resumo_mensal,df.resumo.semanal = df_resumo_semanal,
+                                                                area.name =array_to_str(areas),period.semanal = period_semanal, period.mensal = period_mensal )
+        #Send Resumo Semanal to Nuno
+        response <- microsoft_365r_notify_resumo_semanal_mensal(outlook = outlook,recipient =  "nunomoura@ccsaude.org.mz",df.resumo.mensal = df_resumo_mensal,df.resumo.semanal = df_resumo_semanal,
+                                                                area.name =array_to_str(areas),period.semanal = period_semanal, period.mensal = period_mensal )
+        
         #Send Resumo Semanal to Hugo
-        response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient =  "hugoazevedo@ccsaude.org.mz",df.resumo = df_resumo,area.name =  array_to_str(areas), period = period)
+        response <- microsoft_365r_notify_resumo_semanal_mensal(outlook = outlook,recipient =  "hugoazevedo@ccsaude.org.mz",df.resumo.mensal = df_resumo_mensal,df.resumo.semanal = df_resumo_semanal,
+                                                                area.name =array_to_str(areas),period.semanal = period_semanal, period.mensal = period_mensal )
+        
+        #Send Resumo Semanal to Agnaldo
+        response <- microsoft_365r_notify_resumo_semanal_mensal(outlook = outlook,recipient =  "agnaldosamuel@ccsaude.org.mz",df.resumo.mensal = df_resumo_mensal,df.resumo.semanal = df_resumo_semanal,
+                                                                area.name =array_to_str(areas),period.semanal = period_semanal, period.mensal = period_mensal )
+        
         
         
         if (!is.null(con)) {
