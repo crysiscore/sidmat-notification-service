@@ -79,6 +79,63 @@ microsoft_365r_notify_resumo_semanal <- function(outlook , recipient, df.resumo,
   
 }
 
+microsoft_365r_notify_resumo_semanal_mensal <- function(outlook , recipient, df.resumo.mensal, df.resumo.semanal , area.name, period.semanal, period.mensal ){ 
+  
+  # Convert the data frame to an HTML table
+  names(df.resumo.mensal)[1] <- "Area"
+  names(df.resumo.mensal)[2] <-  " Total Requisicoes"
+  names(df.resumo.mensal)[3] <-  " Pendentes"
+  names(df.resumo.mensal)[4] <-  " Processadas"
+  names(df.resumo.mensal)[5] <-  " Entregues"
+  
+  names(df.resumo.semanal)[1] <- "Area"
+  names(df.resumo.semanal)[2] <-  " Total Requisicoes"
+  names(df.resumo.semanal)[3] <-  " Pendentes"
+  names(df.resumo.semanal)[4] <-  " Processadas"
+  names(df.resumo.semanal)[5] <-  " Entregues"
+  
+  html_table_mensal <- kable(df.resumo.mensal , format = "html", escape = FALSE) %>%
+    kable_styling(
+      full_width = FALSE,
+      bootstrap_options = c("striped", "hover", "condensed")) %>%
+    column_spec(1, bold = TRUE)  # Apply bold formatting to the first column
+  
+  html_table_semanal<- kable(df.resumo.semanal , format = "html", escape = FALSE) %>%
+    kable_styling(
+      full_width = FALSE,
+      bootstrap_options = c("striped", "hover", "condensed")) %>%
+    column_spec(1, bold = TRUE)  # Apply bold formatting to the first column
+  
+  
+  bl_body <- md (glue( "Prezado(a) ,
+
+  Resumo Mensal do plano de distribuição de materiais para {area.name}: {period.mensal}  \\
+ 
+  {html_table_mensal}
+
+  Resumo Semanal do plano de distribuição de materiais para {area.name}: {period.semanal}  \\
+  
+  {html_table_semanal}
+   
+  Para mais informação visite https://ccs-sidmat.vercel.app/auth/login.
+
+  Cpts,
+
+  CCS Logistica" ))
+  
+  
+  bl_em <- compose_email(
+    body=md(bl_body),
+    footer=md("Enviado através de Microsoft365R")
+  )
+  em <- outlook$create_email(bl_em, subject="Resumo semanal do plano de distribuição de materiais", to=recipient)
+  
+  # add an attachment and send it
+  # em$add_attachment(attachment)
+  em$send()
+  
+  
+}
 
 
 
