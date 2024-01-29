@@ -34,7 +34,9 @@ tryCatch({
   )
   
   # Get the current date
-  current_date <- Sys.Date()
+  current_date <- Sys.Date() 
+  #current_date <- as.Date('2024-01-26')
+  
   
   # Get the first day of the month
   first_day_of_month <- floor_date(current_date, unit = "month")
@@ -157,7 +159,7 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
           if(length(emails_responsavel_area) >1) {
             for (email in emails_responsavel_area) {
             
-              response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient = email ,df.resumo = temp_df,area.name = area_name, period = period)
+              response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient = email ,df.resumo = temp_df,area.name = area_name, period = period_semanal)
               received_date <- response$properties$receivedDateTime
               
               # Message received--> update notification status in material table
