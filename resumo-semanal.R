@@ -176,7 +176,7 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
           }
           else {
             
-            response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient =  emails_responsavel_area,df.resumo = temp_df,area.name = area_name, period = period)
+            response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient =  emails_responsavel_area,df.resumo = temp_df,area.name = area_name, period = period_semanal)
             received_date <- response$properties$receivedDateTime
             
             # Message received--> update notification status in material table
