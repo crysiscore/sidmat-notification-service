@@ -35,7 +35,7 @@ tryCatch({
   
   # Get the current date
   current_date <- Sys.Date() 
-  #current_date <- as.Date('2024-01-26')
+  #current_date <- as.Date('2024-10-28')  # Testing with October 2024 data
   
   
   # Get the first day of the month
@@ -79,9 +79,13 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
   df_requisicoes_mensal <- dbGetQuery(con, query_resumo_mensal)
   df_requisicoes_semanal <- dbGetQuery(con, query_resumo_semanal)
   
-  if( nrow(df_requisicoes_semanal) > 0 ){
+  log_msg_data_check <- paste0(Sys.time(), "  [sidmat] - Found ", nrow(df_requisicoes_mensal), " monthly records and ", nrow(df_requisicoes_semanal), " weekly records")
+  write_log(log_message = log_msg_data_check, log_file = log_file_resumo)
+  message(log_msg_data_check)
+  
+  if( nrow(df_requisicoes_mensal ) > 0 | nrow(df_requisicoes_semanal) > 0 ){
     
-    query_colaborador_area <- "select c.nome, c.email, a.id, a.area from api.colaborador c inner join api.colaborador_area ca on c.id = ca.colaborador inner join api.area a on a.id = ca.area;"
+    query_colaborador_area <- "select c.nome, c.email, a.id, a.area  from api.colaborador c  inner join api.colaborador_area ca on c.id = ca.colaborador inner join api.area a on a.id = ca.area  inner join api.usuario u on u.colaborador = c.id where u.status = 'Active';"
     df_colaborador_area <- dbGetQuery(con,query_colaborador_area )
     
     
@@ -108,7 +112,7 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
     
     gr <- create_graph_login(tenant, app, password=pwd, auth_type="client_credentials")
     
-    if(is.environment(gr )){
+    if(is.environment(gr)){
          
         email_addr <- 'nunomoura@ccsaude.org.mz'
       
@@ -159,7 +163,7 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
           if(length(emails_responsavel_area) >1) {
             for (email in emails_responsavel_area) {
             
-              response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient = email ,df.resumo = temp_df,area.name = area_name, period = period_semanal)
+              response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient = email ,df.resumo = temp_df,area.name = area_name, period = period_semanal, cc_recipients = c('nunomoura@ccsaude.org.mz'), bcc_recipients = c('agnaldosamuel@ccsaude.org.mz'))
               received_date <- response$properties$receivedDateTime
               
               # Message received--> update notification status in material table
@@ -174,21 +178,19 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
             
             
           }
-          else {
-            
-            response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient =  emails_responsavel_area,df.resumo = temp_df,area.name = area_name, period = period_semanal)
-            received_date <- response$properties$receivedDateTime
-            
-            # Message received--> update notification status in material table
-            if(substr(response$properties$receivedDateTime,1,4)==substr(Sys.Date(),1,4)){ 
-              log_msg_notification<- paste0(Sys.time(), "  [sidmat] - Notificacao enviada para : { ", area_name," - ",  email, " } ")
-              write_log(log_message = log_msg_notification, log_file = log_file_resumo)
-              message(log_msg_notification)
-              
-            }
-          }
-          
-          
+           else {
+             
+             response <- microsoft_365r_notify_resumo_semanal(outlook = outlook,recipient =  emails_responsavel_area,df.resumo = temp_df,area.name = area_name, period = period_semanal, cc_recipients = c('nunomoura@ccsaude.org.mz'), bcc_recipients = c('agnaldosamuel@ccsaude.org.mz'))
+             received_date <- response$properties$receivedDateTime
+             
+             # Message received--> update notification status in material table
+             if(substr(response$properties$receivedDateTime,1,4)==substr(Sys.Date(),1,4)){ 
+               log_msg_notification<- paste0(Sys.time(), "  [sidmat] - Notificacao enviada para : { ", area_name," - ",  emails_responsavel_area, " } ")
+               write_log(log_message = log_msg_notification, log_file = log_file_resumo)
+               message(log_msg_notification)
+               
+             }
+           }          
           write_log(log_message = "########################################################################################################################", log_file = log_file_resumo)
         
 
@@ -196,11 +198,11 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
         
         #TODO Personalizar envio automatico de emails
         #Send Resumo Semanal to nuno and Dra. Shital
-        #response <- microsoft_365r_notify_resumo_semanal_mensal(outlook = outlook,recipient =  "shitalmobaracaly@ccsaude.org.mz",df.resumo.mensal = df_resumo_mensal,df.resumo.semanal = df_resumo_semanal,
-        #                                                        area.name =array_to_str(areas),period.semanal = period_semanal, period.mensal = period_mensal )
+        response <- microsoft_365r_notify_resumo_semanal_mensal(outlook = outlook,recipient =  "shitalmobaracaly@ccsaude.org.mz",df.resumo.mensal = df_resumo_mensal,df.resumo.semanal = df_resumo_semanal,
+                                                               area.name =array_to_str(areas),period.semanal = period_semanal, period.mensal = period_mensal )
         #Send Resumo Semanal to Nuno
-        #response <- microsoft_365r_notify_resumo_semanal_mensal(outlook = outlook,recipient =  "nunomoura@ccsaude.org.mz",df.resumo.mensal = df_resumo_mensal,df.resumo.semanal = df_resumo_semanal,
-        #                                                        area.name =array_to_str(areas),period.semanal = period_semanal, period.mensal = period_mensal )
+        response <- microsoft_365r_notify_resumo_semanal_mensal(outlook = outlook,recipient =  "nunomoura@ccsaude.org.mz",df.resumo.mensal = df_resumo_mensal,df.resumo.semanal = df_resumo_semanal,
+                                                              area.name =array_to_str(areas),period.semanal = period_semanal, period.mensal = period_mensal )
         #
         #Send Resumo Semanal to Hugo
         #response <- microsoft_365r_notify_resumo_semanal_mensal(outlook = outlook,recipient =  "hugoazevedo@ccsaude.org.mz",df.resumo.mensal = df_resumo_mensal,df.resumo.semanal = df_resumo_semanal,
@@ -210,11 +212,7 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
         response <- microsoft_365r_notify_resumo_semanal_mensal(outlook = outlook,recipient =  "agnaldosamuel@ccsaude.org.mz",df.resumo.mensal = df_resumo_mensal,df.resumo.semanal = df_resumo_semanal,
                                                                 area.name =array_to_str(areas),period.semanal = period_semanal, period.mensal = period_mensal )
 
-        #Send Resumo Semanal to Agnaldo
-        #response <- microsoft_365r_notify_resumo_semanal_mensal(outlook = outlook,recipient =  "delfimsambo@ccsaude.org.mz",df.resumo.mensal = df_resumo_mensal,df.resumo.semanal = df_resumo_semanal,
-        #                                                        area.name =array_to_str(areas),period.semanal = period_semanal, period.mensal = period_mensal )
-        
-        
+ 
         
         if (!is.null(con)) {
           # Close the database connection in the finally block
@@ -222,8 +220,7 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
           dbDisconnect(con)
         }
         
-        
-    else {
+    } else {
       
       log_msg_graph_login<- paste0(Sys.time(), "  [sidmat] - Error : Failed to Create a Microsoft Graph login ...")
       write_log(log_message = log_msg_graph_login, log_file = log_file_resumo)
@@ -235,13 +232,11 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
       }
       
     }
-  }
-   }
-  else {
+  } else {
     
     log_msg_no_req <- paste0(Sys.time(), "  [sidmat] - Error : Nao existem requisicoes neste periodo")
     write_log(log_message = log_msg_no_req, log_file = log_file_resumo) 
-    
+    message(log_msg_no_req)
     if (!is.null(con)) {
       # Close the database connection in the finally block
       message("closing  database connection ")
@@ -254,11 +249,13 @@ where req.canceled = 'No' and req.data_requisicao::date between '" , monday_of_w
   
 }, error = function(e) {
   
-  log_msg_error <- paste0(Sys.time(), "  [sidmat] - Unknown error ...")
-  log_msg_error_message <- paste0(Sys.time(), "  [sidmat] - Error message: ", e$message)
+   log_msg_error <- paste0(Sys.time(), "  [sidmat] - Unknown error ...")
+   log_msg_error_message <- paste0(Sys.time(), "  [sidmat] - Error message: ", e$message)
+   message(log_msg_error_message)
+
   if (!is.null(con)) {
     # Close the database connection in the finally block
-    message("closing  database connection ")
+    message("ErrorL closing  database connection:", )
     dbDisconnect(con)
   }
   write_log(log_message = log_msg_error, log_file = log_file_resumo)

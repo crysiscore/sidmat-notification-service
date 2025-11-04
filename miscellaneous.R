@@ -57,7 +57,7 @@ microsoft_365r_notify_resumo_semanal <- function(outlook , recipient, df.resumo,
   
   bl_body <- md (glue( "Prezado(a) ,
 
-  Segue no anexo o resumo semanal do plano de distribuição de materiais para {area.name}: {period}  \\
+  Segue no anexo o resumo do plano de distribuição de materiais para {area.name}: {period}  \\
  
   {html_table}
 
@@ -74,7 +74,7 @@ microsoft_365r_notify_resumo_semanal <- function(outlook , recipient, df.resumo,
   )
   
   # Create email with main recipient and default CC/BCC
-  em <- outlook$create_email(bl_em, subject="Resumo semanal do plano de distribuição de materiais", to=recipient, cc=cc_recipients, bcc=bcc_recipients)
+  em <- outlook$create_email(bl_em, subject="Resumo Mensal do plano de distribuição de materiais", to=recipient, cc=cc_recipients, bcc=bcc_recipients)
   
   # add an attachment and send it
   # em$add_attachment(attachment)
@@ -118,7 +118,7 @@ microsoft_365r_notify_resumo_semanal_mensal <- function(outlook , recipient, df.
  
   {html_table_mensal}
 
-  Resumo Semanal do plano de distribuição de materiais para {area.name}: {period.semanal}  \\
+  Resumo do plano de distribuição de materiais para {area.name}: {period.semanal}  \\
   
   {html_table_semanal}
    
@@ -135,7 +135,7 @@ microsoft_365r_notify_resumo_semanal_mensal <- function(outlook , recipient, df.
   )
   
   # Create email with main recipient and default CC/BCC
-  em <- outlook$create_email(bl_em, subject="Resumo semanal do plano de distribuição de materiais", to=recipient, cc=cc_recipients, bcc=bcc_recipients)
+  em <- outlook$create_email(bl_em, subject="Resumo Mensal do plano de distribuição de materiais", to=recipient, cc=cc_recipients, bcc=bcc_recipients)
   
   # add an attachment and send it
   # em$add_attachment(attachment)
