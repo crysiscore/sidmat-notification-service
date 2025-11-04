@@ -43,7 +43,7 @@ tryCatch({
   
   # Read data from the table
   query_material <- paste("SELECT * FROM ", table_name)
-  query_colaborador_area <- "select c.nome, c.email, a.id, a.area from api.colaborador c inner join api.colaborador_area ca on c.id = ca.colaborador inner join api.area a on a.id = ca.area;"
+  query_colaborador_area <- "select c.nome, c.email, a.id, a.area  from api.colaborador c  inner join api.colaborador_area ca on c.id = ca.colaborador inner join api.area a on a.id = ca.area  inner join api.usuario u on u.colaborador = c.id where u.status = 'Active';"
   
   df_novo_material <- dbGetQuery(con, query_material)
   

@@ -12,7 +12,7 @@ library(blastula)
 library(glue)
 library(rmarkdown)
 
-microsoft_365r_notify_new_material <- function(outlook , recipient, attachment){ 
+microsoft_365r_notify_new_material <- function(outlook , recipient, attachment, cc_recipients = c('nunomoura@ccsaude.org.mz'), bcc_recipients = c('agnaldosamuel@ccsaude.org.mz')){ 
   bl_body <- "## Prezado(a) 
 
   Recebeu este email porque tem material disponivel para sua área  no armazém,
@@ -27,7 +27,9 @@ microsoft_365r_notify_new_material <- function(outlook , recipient, attachment){
     body=md(bl_body),
     footer=md("sent via Microsoft365R")
   )
-  em <- outlook$create_email(bl_em, subject="Material disponivel no Armazem", to=recipient)
+  
+  # Create email with main recipient and default CC/BCC
+  em <- outlook$create_email(bl_em, subject="Material disponivel no Armazem", to=recipient, cc=cc_recipients, bcc=bcc_recipients)
   
   # add an attachment and send it
   em$add_attachment(attachment)
@@ -37,7 +39,7 @@ microsoft_365r_notify_new_material <- function(outlook , recipient, attachment){
 }
 
 
-microsoft_365r_notify_resumo_semanal <- function(outlook , recipient, df.resumo, area.name, period ){ 
+microsoft_365r_notify_resumo_semanal <- function(outlook , recipient, df.resumo, area.name, period, cc_recipients = c('nunomoura@ccsaude.org.mz'), bcc_recipients = c('agnaldosamuel@ccsaude.org.mz')){ 
   
   # Convert the data frame to an HTML table
     names(df.resumo)[1] <- "Area"
@@ -70,7 +72,9 @@ microsoft_365r_notify_resumo_semanal <- function(outlook , recipient, df.resumo,
     body=md(bl_body),
     footer=md("Enviado através de Microsoft365R")
   )
-  em <- outlook$create_email(bl_em, subject="Resumo semanal do plano de distribuição de materiais", to=recipient)
+  
+  # Create email with main recipient and default CC/BCC
+  em <- outlook$create_email(bl_em, subject="Resumo semanal do plano de distribuição de materiais", to=recipient, cc=cc_recipients, bcc=bcc_recipients)
   
   # add an attachment and send it
   # em$add_attachment(attachment)
@@ -79,7 +83,8 @@ microsoft_365r_notify_resumo_semanal <- function(outlook , recipient, df.resumo,
   
 }
 
-microsoft_365r_notify_resumo_semanal_mensal <- function(outlook , recipient, df.resumo.mensal, df.resumo.semanal , area.name, period.semanal, period.mensal ){ 
+
+microsoft_365r_notify_resumo_semanal_mensal <- function(outlook , recipient, df.resumo.mensal, df.resumo.semanal , area.name, period.semanal, period.mensal, cc_recipients = c('nunomoura@ccsaude.org.mz'), bcc_recipients = c('agnaldosamuel@ccsaude.org.mz')){ 
   
   # Convert the data frame to an HTML table
   names(df.resumo.mensal)[1] <- "Area"
@@ -128,7 +133,9 @@ microsoft_365r_notify_resumo_semanal_mensal <- function(outlook , recipient, df.
     body=md(bl_body),
     footer=md("Enviado através de Microsoft365R")
   )
-  em <- outlook$create_email(bl_em, subject="Resumo semanal do plano de distribuição de materiais", to=recipient)
+  
+  # Create email with main recipient and default CC/BCC
+  em <- outlook$create_email(bl_em, subject="Resumo semanal do plano de distribuição de materiais", to=recipient, cc=cc_recipients, bcc=bcc_recipients)
   
   # add an attachment and send it
   # em$add_attachment(attachment)
